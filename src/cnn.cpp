@@ -222,6 +222,12 @@ int CNN::forward_pass() {
     return 0;
 }
 int CNN::train(int epochs, int batches_size, int max_error_percent) {
+
+    fprintf(stderr, "Creating CNN with %i inputs, %i hidden layers and %i outputs\n",
+          num_inputs, num_hidden_layers, num_outputs);
+    fprintf(stderr, "Min neuron val: %li, Max neuron val: %li\n", MIN_NEURON_VAL, MAX_NEURON_VAL);
+    fprintf(stderr, "Quantized values: %li\n", QUANTIZED_VALUES);
+
     // Define array to pick random data from dataset
     int order[training_data_amount];
     for (int i = 0; i < training_data_amount; i++) {
