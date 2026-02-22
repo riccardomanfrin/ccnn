@@ -13,7 +13,7 @@
 #define MIN_NEURON_VAL (-(((long int) 1) << (QUANTIZED_BITS - 1)))
 #define RELU_LEAK_FACTOR_PERCENT 10
 #define LEARNING_RATE_PER_100000 1
-#define INIT_WEIGHT_SCALE_DOWN_FACTOR (MAX_NEURON_VAL / 10)
+#define INIT_WEIGHT_SCALE_DOWN_FACTOR (MAX_NEURON_VAL / 2)
 // Makes the CNN training reproducible
 //#define FIX_RANDOMNESS
 
@@ -26,7 +26,7 @@
 #define LAYERS_QUANTIZED_NORMALIZATION
 
 //Use integers/floats for the weights and biases
-#define USE_FLOATS
+//#define USE_FLOATS
 
 #ifdef USE_FLOATS
 typedef float value_t;

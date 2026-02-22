@@ -6,7 +6,7 @@
 #include <string.h>
 #include <time.h>
 
-static inline int shuffle(int *array, size_t n) {
+static inline int shuffle(int* array, size_t n) {
     for (int i = 0; i < n; i++) {
         size_t j = rand() % n;
         int tmp = array[i];
@@ -26,7 +26,7 @@ static bool needs_normalization(const value_t max_neuron_val) {
     return max_neuron_val < MIN_NEURON_VAL || max_neuron_val > MAX_NEURON_VAL;
 }
 
-static int normalize(value_t &val, const value_t max_neuron_val) {
+static int normalize(value_t& val, const value_t max_neuron_val) {
     val = val / (absval(max_neuron_val) / MAX_NEURON_VAL) / 2;
     if (val < MIN_NEURON_VAL)
         val = MIN_NEURON_VAL;
@@ -39,7 +39,7 @@ static int normalize(value_t &val, const value_t max_neuron_val) {
 #endif
 
 CNN::CNN(int num_inputs, int num_hidden_layers,
-         int *_num_hidden_nodes_per_layer, int num_outputs)
+         int* _num_hidden_nodes_per_layer, int num_outputs)
     : num_inputs(num_inputs),
       num_hidden_layers(num_hidden_layers),
       num_outputs(num_outputs) {
@@ -52,7 +52,7 @@ CNN::CNN(int num_inputs, int num_hidden_layers,
     for (int l = 0; l < num_hidden_layers; l++) {
         int curr_layer_num_hidden_nodes = num_hidden_nodes_per_layer[l];
         hidden_layers[l] =
-            (Neuron **)malloc(sizeof(Neuron **) * curr_layer_num_hidden_nodes);
+            (Neuron**)malloc(sizeof(Neuron**) * curr_layer_num_hidden_nodes);
 
         for (int n = 0; n < curr_layer_num_hidden_nodes; n++) {
             hidden_layers[l][n] = new Neuron(num_inputs);
@@ -103,30 +103,30 @@ CNN::~CNN() {
     }
 }
 
-int CNN::load_training_data(value_t *data_inputs, value_t *data_outputs) {
-    TrainingData *t =
+int CNN::load_training_data(value_t* data_inputs, value_t* data_outputs) {
+    TrainingData* t =
         new TrainingData(num_inputs, data_inputs, num_outputs, data_outputs);
     training_data[training_data_amount] = t;
     training_data_amount++;
     return 0;
 }
 
-static int serialize_cnn_params(Neuron *n, int prev_num_inputs, void **arg) {
-    value_t *buff = *(value_t **)arg;
+static int serialize_cnn_params(Neuron* n, int prev_num_inputs, void** arg) {
+    value_t* buff = *(value_t**)arg;
     int i = 0;
     for (; i < prev_num_inputs; i++) {
         buff[i] = n->weights[i];
     }
     buff[i] = n->bias;
-    *arg = (void *)&buff[++i];
+    *arg = (void*)&buff[++i];
     return 0;
 }
 
-int CNN::save(const char *file) {
-    FILE *f = fopen(file, "w");
-    value_t *data = (value_t *)calloc(1000000, sizeof(value_t));
-    value_t *pointer = data;
-    iterate(&serialize_cnn_params, ((void **)&pointer));
+int CNN::save(const char* file) {
+    FILE* f = fopen(file, "w");
+    value_t* data = (value_t*)calloc(1000000, sizeof(value_t));
+    value_t* pointer = data;
+    iterate(&serialize_cnn_params, ((void**)&pointer));
     size_t s = (pointer - data) * sizeof(value_t);
     fwrite(data, s, 1, f);
     fclose(f);
@@ -134,12 +134,12 @@ int CNN::save(const char *file) {
     return 0;
 }
 
-static int deserialize_cnn_params(Neuron *n, int prev_num_inputs, void **arg) {
-    FILE *f = *(FILE **)arg;
-    value_t *v = (value_t *)malloc(sizeof(value_t) * prev_num_inputs + 1);
+static int deserialize_cnn_params(Neuron* n, int prev_num_inputs, void** arg) {
+    FILE* f = *(FILE**)arg;
+    value_t* v = (value_t*)malloc(sizeof(value_t) * prev_num_inputs + 1);
 
     if (prev_num_inputs + 1 !=
-        fread((void *)v, sizeof(value_t), prev_num_inputs + 1, f)) {
+        fread((void*)v, sizeof(value_t), prev_num_inputs + 1, f)) {
         return -1;
     }
     int i = 0;
@@ -151,31 +151,31 @@ static int deserialize_cnn_params(Neuron *n, int prev_num_inputs, void **arg) {
     return 0;
 }
 
-int CNN::load(const char *file) {
-    FILE *f = fopen(file, "r");
+int CNN::load(const char* file) {
+    FILE* f = fopen(file, "r");
     if (f == NULL) return -1;
-    iterate(&deserialize_cnn_params, ((void **)&f));
+    iterate(&deserialize_cnn_params, ((void**)&f));
     fclose(f);
     return 0;
 }
 
-int average_weights_and_bias(Neuron *n, int prev_num_inputs, void **arg) {
-    int batches_size = *(int *)(*arg);
+int average_weights_and_bias(Neuron* n, int prev_num_inputs, void** arg) {
+    int batches_size = *(int*)(*arg);
     for (int i = 0; i < prev_num_inputs; i++) {
         n->weights[i] /= batches_size;
     }
     n->bias /= batches_size;
     return 0;
 }
-int clear_minibatch_context(Neuron *n, int prev_num_inputs, void **_arg) {
+int clear_minibatch_context(Neuron* n, int prev_num_inputs, void** _arg) {
     n->value = 0;
     n->value_sum = 0;
     n->error = 0;
     return 0;
 }
 
-int CNN::iterate(int (*action)(Neuron *n, int prev_num_inputs, void **arg),
-                 void **arg) {
+int CNN::iterate(int (*action)(Neuron* n, int prev_num_inputs, void** arg),
+                 void** arg) {
     int prev_num_inputs = num_inputs;
     for (int l = 0; l < num_hidden_layers; l++) {
         for (int n = 0; n < num_hidden_nodes_per_layer[l]; n++) {
@@ -189,15 +189,15 @@ int CNN::iterate(int (*action)(Neuron *n, int prev_num_inputs, void **arg),
     return 0;
 }
 
-int CNN::load_inputs(value_t *input_data) {
-    Neuron **inputs = input_layer;
+int CNN::load_inputs(value_t* input_data) {
+    Neuron** inputs = input_layer;
     for (int i = 0; i < num_inputs; i++) {
         inputs[i]->value = input_data[i];
     }
     return 0;
 }
 int CNN::clear_inputs_context() {
-    Neuron **inputs = input_layer;
+    Neuron** inputs = input_layer;
     for (int i = 0; i < num_inputs; i++) {
         inputs[i]->value_sum = 0;
     }
@@ -205,7 +205,7 @@ int CNN::clear_inputs_context() {
 }
 int CNN::forward_pass() {
     int prev_num_inputs = num_inputs;
-    Neuron **inputs = input_layer;
+    Neuron** inputs = input_layer;
     int l = 0;
     // and for each hidden layer
     // compute Hidden layers activation
@@ -264,7 +264,7 @@ int CNN::train(int epochs, int batches_size, int max_error_percent) {
 
                 // initialize the network input values from a training data
                 // sample
-                TrainingData *td = training_data[order[d + b]];
+                TrainingData* td = training_data[order[d + b]];
                 load_inputs(td->inputs);
 
                 forward_pass();
@@ -281,10 +281,10 @@ int CNN::train(int epochs, int batches_size, int max_error_percent) {
             normalize_output_error(num_outputs, output_layer);
 
             // Compute error in backard hidden layers
-            Neuron **layer = output_layer;
+            Neuron** layer = output_layer;
             int layer_neurons = num_outputs;
             for (int l = num_hidden_layers - 1; l >= 0; l--) {
-                Neuron **prev_layer = hidden_layers[l];
+                Neuron** prev_layer = hidden_layers[l];
                 int prev_layer_neurons = num_hidden_nodes_per_layer[l];
                 back_propagate_errors(layer_neurons, layer, prev_layer_neurons,
                                       prev_layer);
@@ -293,10 +293,10 @@ int CNN::train(int epochs, int batches_size, int max_error_percent) {
             }
 
             // Apply changes in output & hidden nodes weights and biases
-            Neuron **prev_layer = input_layer;
+            Neuron** prev_layer = input_layer;
             int prev_layer_neurons = num_inputs;
             for (int l = 0; l < num_hidden_layers; l++) {
-                Neuron **layer = hidden_layers[l];
+                Neuron** layer = hidden_layers[l];
                 int layer_neurons = num_hidden_nodes_per_layer[l];
                 adjust_weights_and_biases(layer_neurons, layer,
                                           prev_layer_neurons, prev_layer,
@@ -317,8 +317,8 @@ int CNN::train(int epochs, int batches_size, int max_error_percent) {
     return 0;
 }
 
-int CNN::adjust_weights_and_biases(int layer_neurons, Neuron **layer,
-                                   int prev_layer_neurons, Neuron **prev_layer,
+int CNN::adjust_weights_and_biases(int layer_neurons, Neuron** layer,
+                                   int prev_layer_neurons, Neuron** prev_layer,
                                    int batches_size) {
 #ifdef LAYERS_QUANTIZED_NORMALIZATION1
     value_t max_layer_bias_abs_val = MAX_NEURON_VAL + 1;
@@ -363,8 +363,8 @@ int CNN::adjust_weights_and_biases(int layer_neurons, Neuron **layer,
     return 0;
 }
 
-int CNN::back_propagate_errors(int layer_neurons, Neuron **layer,
-                               int prev_layer_neurons, Neuron **prev_layer) {
+int CNN::back_propagate_errors(int layer_neurons, Neuron** layer,
+                               int prev_layer_neurons, Neuron** prev_layer) {
 #ifdef LAYERS_QUANTIZED_NORMALIZATION
     value_t max_layer_error_abs_val = MAX_NEURON_VAL + 1;
 #endif
@@ -401,8 +401,8 @@ int CNN::back_propagate_errors(int layer_neurons, Neuron **layer,
     return 0;
 }
 
-int CNN::calc_output_error(int layer_neurons, Neuron **layer,
-                           Neuron **expected_values) {
+int CNN::calc_output_error(int layer_neurons, Neuron** layer,
+                           Neuron** expected_values) {
     // Compute change in output weights
     for (int k = 0; k < layer_neurons; k++) {
         layer[k]->error += (expected_values[k]->value - layer[k]->value) /
@@ -410,7 +410,7 @@ int CNN::calc_output_error(int layer_neurons, Neuron **layer,
     }
     return 0;
 }
-int CNN::normalize_output_error(int layer_neurons, Neuron **layer) {
+int CNN::normalize_output_error(int layer_neurons, Neuron** layer) {
 #ifdef LAYERS_QUANTIZED_NORMALIZATION
     value_t max_layer_error_abs_val = MAX_NEURON_VAL + 1;
     for (int k = 0; k < layer_neurons; k++) {
@@ -428,8 +428,8 @@ int CNN::normalize_output_error(int layer_neurons, Neuron **layer) {
     return 0;
 }
 
-int CNN::calc_layer(int prev_layer_neurons, Neuron **prev_layer,
-                    int layer_neurons, Neuron **layer) {
+int CNN::calc_layer(int prev_layer_neurons, Neuron** prev_layer,
+                    int layer_neurons, Neuron** layer) {
 #ifdef LAYERS_QUANTIZED_NORMALIZATION
     value_t max_neuron_val = layer[0]->value;
 #endif
@@ -439,7 +439,7 @@ int CNN::calc_layer(int prev_layer_neurons, Neuron **prev_layer,
     }
     // and each of its nodes
     for (int n = 0; n < layer_neurons; n++) {
-        Neuron *curr = layer[n];
+        Neuron* curr = layer[n];
         curr->value = curr->bias;
         for (int i = 0; i < prev_layer_neurons; i++) {
             if (prev_layer[i]->value != 0) {
@@ -468,13 +468,13 @@ int CNN::calc_layer(int prev_layer_neurons, Neuron **prev_layer,
 #endif
 
     for (int n = 0; n < layer_neurons; n++) {
-        Neuron *curr = layer[n];
+        Neuron* curr = layer[n];
         curr->value = relu(curr->value);
     }
     return 0;
 }
 
-int CNN::run(value_t *data_inputs, value_t *data_outputs) {
+int CNN::run(value_t* data_inputs, value_t* data_outputs) {
     load_inputs(data_inputs);
     forward_pass();
     for (int i = 0; i < num_outputs; i++) {

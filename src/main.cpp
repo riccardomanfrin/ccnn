@@ -17,7 +17,7 @@ int load_data(CNN &cnn) {
 }
 
 int main(int argc, char *argv[]) {
-    int hidden_layers_nodes_list[] = {8};
+    int hidden_layers_nodes_list[] = {2};
     CNN cnn(2, 1, hidden_layers_nodes_list, 1);
     cnn.init();
     cnn.load("weights_and_biases.bin");
@@ -43,9 +43,9 @@ int main(int argc, char *argv[]) {
     } else {
         load_data(cnn);
         printf(
-            "oe, hw[0][0], hw[0][1], hw[1][0], hw[1][1], ow[0][0], ow[0][0], v00, "
+            "oe, hw[0][0], hw[0][1], hw[1][0], hw[1][1], ow[0][0], ow[0][1], v00, "
             "v01, v10, v11\n");
-        cnn.train(45000, 1, 1);
+        cnn.train(100000, 1, 1);
         
         cnn.save("weights_and_biases.bin");
     }
