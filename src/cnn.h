@@ -11,9 +11,9 @@
 #define QUANTIZED_VALUES (((long int) 1) << QUANTIZED_BITS)
 #define MAX_NEURON_VAL ((((long int) 1) << (QUANTIZED_BITS - 1)) - 1)
 #define MIN_NEURON_VAL (-(((long int) 1) << (QUANTIZED_BITS - 1)))
-#define RELU_LEAK_FACTOR_PERCENT 10
+#define RELU_LEAK_FACTOR_PERCENT 1
 #define LEARNING_RATE_PER_100000 10
-#define INIT_WEIGHT_SCALE_DOWN_FACTOR (MAX_NEURON_VAL / 2)
+#define WEIGHT_BIAS_SCALE_DOWN_FACTOR 40
 // Makes the CNN training reproducible
 //#define FIX_RANDOMNESS
 
@@ -24,6 +24,8 @@
 // Normalize to the quantized admitted bounds within each individual step layer
 // You want the CNN layers values to NOT exceed the quantized space (e.g. 8bits)
 #define LAYERS_QUANTIZED_NORMALIZATION
+
+#define LAYERS_QUANTIZED_NORMALIZATION1
 
 //Use integers/floats for the weights and biases
 //#define USE_FLOATS
@@ -41,11 +43,12 @@ typedef long int value_t;
 
 class Neuron {
    public:
-    value_t value_batch_sum = 0;
     value_t value = 0;
     value_t bias = 0;
-    value_t error = 0;
     value_t *weights = NULL;
+    value_t error = 0;
+    value_t bias_gradient = 0;
+    value_t weight_gradient = 0;
     int num_inputs = 0;
     Neuron(int num_inputs) : num_inputs(num_inputs) {
         if (num_inputs > 0) {
@@ -93,6 +96,14 @@ class CNN {
     int load(const char *file);
     int load_inputs(value_t *inputs);
     int forward_pass();
+    /**
+     * Train for number of epochs
+     * An epoch is an iteration over all the elements of the dataset.
+     * During an epoch the entire dataset is iterated in batches of
+     * size `batches_size` until error converges under max_error_percent.
+     * The dataset is shuffled to pick from it randomly.
+     * Inputs context (value_batch_sum) are cleared
+     */
     int train(int epochs, int batches_size, int max_error_percent);
     int run(value_t *data_inputs, value_t *data_outputs);
     int calc_overall_mean_out_error();
@@ -103,7 +114,7 @@ class CNN {
    private:
     int clear_inputs_context();
     
-    int iterate(int (*action)(Neuron *n, int prev_num_inputs, void **arg),
+    int iterate_forward(int (*action)(Neuron *n, int prev_num_inputs, void **arg),
                 void **arg);
     value_t relu(value_t x);
     value_t drelu_reciprocal(value_t x);

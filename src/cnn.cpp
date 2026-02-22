@@ -27,8 +27,11 @@ static bool needs_normalization(const value_t max_neuron_val) {
 }
 
 static int normalize(value_t& val, const value_t max_neuron_val) {
-    // We scale by 2 to allow the dynamic to also grow
-    val = val * MAX_NEURON_VAL / absval(max_neuron_val) / 2;
+
+    if (absval(max_neuron_val) > MAX_NEURON_VAL) {
+        // We scale by 2 to allow the dynamic to also grow
+        val = val * MAX_NEURON_VAL / absval(max_neuron_val) / 20;
+    }
     if (val < MIN_NEURON_VAL)
        throw "Normalization error: value underflow"; 
     else if (val > MAX_NEURON_VAL)
@@ -127,7 +130,7 @@ int CNN::save(const char* file) {
     FILE* f = fopen(file, "w");
     value_t* data = (value_t*)calloc(1000000, sizeof(value_t));
     value_t* pointer = data;
-    iterate(&serialize_cnn_params, ((void**)&pointer));
+    iterate_forward(&serialize_cnn_params, ((void**)&pointer));
     size_t s = (pointer - data) * sizeof(value_t);
     fwrite(data, s, 1, f);
     fclose(f);
@@ -155,7 +158,7 @@ static int deserialize_cnn_params(Neuron* n, int prev_num_inputs, void** arg) {
 int CNN::load(const char* file) {
     FILE* f = fopen(file, "r");
     if (f == NULL) return -1;
-    iterate(&deserialize_cnn_params, ((void**)&f));
+    iterate_forward(&deserialize_cnn_params, ((void**)&f));
     fclose(f);
     return 0;
 }
@@ -170,12 +173,13 @@ int average_weights_and_bias(Neuron* n, int prev_num_inputs, void** arg) {
 }
 int clear_minibatch_context(Neuron* n, int prev_num_inputs, void** _arg) {
     n->value = 0;
-    n->value_batch_sum = 0;
     n->error = 0;
+    n->bias_gradient = 0;
+    n->weight_gradient = 0;
     return 0;
 }
 
-int CNN::iterate(int (*action)(Neuron* n, int prev_num_inputs, void** arg),
+int CNN::iterate_forward(int (*action)(Neuron* n, int prev_num_inputs, void** arg),
                  void** arg) {
     int prev_num_inputs = num_inputs;
     for (int l = 0; l < num_hidden_layers; l++) {
@@ -197,13 +201,7 @@ int CNN::load_inputs(value_t* input_data) {
     }
     return 0;
 }
-int CNN::clear_inputs_context() {
-    Neuron** inputs = input_layer;
-    for (int i = 0; i < num_inputs; i++) {
-        inputs[i]->value_batch_sum = 0;
-    }
-    return 0;
-}
+
 int CNN::forward_pass() {
     int prev_num_inputs = num_inputs;
     Neuron** inputs = input_layer;
@@ -256,8 +254,7 @@ int CNN::train(int epochs, int batches_size, int max_error_percent) {
 
         // for each data set element,
         for (int d = 0; d < training_data_amount;) {
-            clear_inputs_context();
-            iterate(clear_minibatch_context, NULL);
+            iterate_forward(clear_minibatch_context, NULL);
             int b = 0;
             // and picking from a smaller number of mini batches,
             for (; b < batches_size && d + b < training_data_amount; b++) {
@@ -324,15 +321,14 @@ int CNN::adjust_weights_and_biases(int layer_neurons, Neuron** layer,
                                    int prev_layer_neurons, Neuron** prev_layer,
                                    int batches_size) {
 #ifdef LAYERS_QUANTIZED_NORMALIZATION1
-    value_t max_layer_bias_abs_val = MAX_NEURON_VAL + 1;
-    value_t max_layer_weight_abs_val = MAX_NEURON_VAL + 1;
+    value_t max_layer_bias_abs_val = 0;
+    value_t max_layer_weight_abs_val = 0;
 #endif
     for (int k = 0; k < layer_neurons; k++) {
-        layer[k]->bias += clip_error(layer[k]->error, batches_size);
+        layer[k]->bias += layer[k]->error;
         for (int j = 0; j < prev_layer_neurons; j++) {
-            value_t weight_adjustment_error = clip_error(
-                layer[k]->error * prev_layer[j]->value_batch_sum / batches_size,
-                batches_size);
+            value_t weight_adjustment_error = 
+                layer[k]->error * prev_layer[j]->value;
             layer[k]->weights[j] += weight_adjustment_error;
 #ifdef LAYERS_QUANTIZED_NORMALIZATION1
             value_t absvalweight = absval(layer[k]->weights[j]);
@@ -502,8 +498,8 @@ int CNN::calc_overall_mean_out_error() {
 value_t CNN::clip_error(value_t error, int batches_size) {
     value_t clip_value =
         overall_mean_out_error * LEARNING_RATE_PER_100000 / 100000;
-    if (clip_value == 0) {
-        clip_value = 1;
+    if (clip_value < MAX_NEURON_VAL / WEIGHT_BIAS_SCALE_DOWN_FACTOR) {
+        clip_value = MAX_NEURON_VAL / WEIGHT_BIAS_SCALE_DOWN_FACTOR;
     }
     if (error > clip_value)
         error = clip_value;
@@ -539,7 +535,7 @@ int CNN::print() {
 
 int CNN::rand_weight_or_bias() {
     return ((rand() % QUANTIZED_VALUES) - MAX_NEURON_VAL) /
-           INIT_WEIGHT_SCALE_DOWN_FACTOR;
+           WEIGHT_BIAS_SCALE_DOWN_FACTOR;
 }
 
 value_t CNN::relu(value_t x) {
