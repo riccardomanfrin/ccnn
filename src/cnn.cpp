@@ -487,10 +487,12 @@ int CNN::calc_overall_error() {
     value_t output_data[num_outputs];
     for (int d = 0; d < training_data_amount; d++) {
         run(training_data[d]->inputs, output_data);
-        overall_error +=
-            absval(output_data[0] - training_data[d]->outputs[0]->value);
+        for (int i = 0; i < num_outputs; i++) {
+            overall_error +=
+                absval(output_data[i] - training_data[d]->outputs[i]->value);
+        }
     }
-    overall_error /= training_data_amount;
+    overall_error /= (training_data_amount * num_outputs);
     return overall_error;
 }
 
