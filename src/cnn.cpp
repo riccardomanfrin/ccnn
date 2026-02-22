@@ -27,7 +27,7 @@ static bool needs_normalization(const value_t max_neuron_val) {
 }
 
 static int normalize(value_t& val, const value_t max_neuron_val) {
-    val = val / (absval(max_neuron_val) / MAX_NEURON_VAL) / 2;
+    val = val * MAX_NEURON_VAL / absval(max_neuron_val) / 2;
     if (val < MIN_NEURON_VAL)
         val = MIN_NEURON_VAL;
     else if (val > MAX_NEURON_VAL)
