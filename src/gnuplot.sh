@@ -9,15 +9,15 @@ set ylabel "Value";
 set autoscale;
 
 plot "out.csv" \
-   using 0:1 with lines linewidth 2 lc rgb "black" title "oe", \
-"" using 0:2 with lines linewidth 2 lc rgb "blue" title "hw[0][0]", \
-"" using 0:3 with lines linewidth 2 lc rgb "blue" title "hw[0][1]", \
-"" using 0:4 with lines linewidth 2 lc rgb "blue" title "hw[1][0]", \
-"" using 0:5 with lines linewidth 2 lc rgb "blue" title "hw[1][1]", \
-"" using 0:6 with lines linewidth 2 lc rgb "blue" title "ow[0][0]", \
-"" using 0:7 with lines linewidth 2 lc rgb "blue" title "ow[0][0]", \
-"" using 0:8 with lines lc rgb "green" title "v00" , \
-"" using 0:9 with lines lc rgb "orange" title "v01" , \
-"" using 0:10 with lines lc rgb "red" title "v10" , \
-"" using 0:11 with lines lc rgb "purple" title "v11" ;
+   using 0:1 with lines linewidth 2 lc rgb "black" title "error_{overall}", \
+"" using 0:2 with lines linewidth 2 lc rgb "blue" title "hw_{[0][0]}", \
+"" using 0:3 with lines linewidth 2 lc rgb "blue" title "hw_{[0][1]}", \
+"" using 0:4 with lines linewidth 2 lc rgb "blue" title "hw_{[1][0]}", \
+"" using 0:5 with lines linewidth 2 lc rgb "blue" title "hw_{[1][1]}", \
+"" using 0:6 with lines linewidth 2 lc rgb "blue" title "ow_{[0][0]}", \
+"" using 0:7 with lines linewidth 2 lc rgb "blue" title "ow_{[0][1]}", \
+"" using 0:8 with lines lc rgb "green" title "v_{00}" , \
+"" using 0:9 with lines lc rgb "orange" title "v_{01}" , \
+"" using 0:10 with lines lc rgb "red" title "v_{10}" , \
+"" using 0:11 with lines lc rgb "purple" title "v_{11}" ;
 EOF
