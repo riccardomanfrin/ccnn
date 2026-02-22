@@ -30,9 +30,9 @@ static int normalize(value_t& val, const value_t max_neuron_val) {
     // We scale by 2 to allow the dynamic to also grow
     val = val * MAX_NEURON_VAL / absval(max_neuron_val) / 2;
     if (val < MIN_NEURON_VAL)
-        val = MIN_NEURON_VAL;
+       throw "Normalization error: value underflow"; 
     else if (val > MAX_NEURON_VAL)
-        val = MAX_NEURON_VAL;
+        throw "Normalization error: value overflow";
 
     return 0;
 }
@@ -223,10 +223,11 @@ int CNN::forward_pass() {
     return 0;
 }
 int CNN::train(int epochs, int batches_size, int max_error_percent) {
-
-    fprintf(stderr, "Creating CNN with %i inputs, %i hidden layers and %i outputs\n",
-          num_inputs, num_hidden_layers, num_outputs);
-    fprintf(stderr, "Min neuron val: %li, Max neuron val: %li\n", MIN_NEURON_VAL, MAX_NEURON_VAL);
+    fprintf(stderr,
+            "Creating CNN with %i inputs, %i hidden layers and %i outputs\n",
+            num_inputs, num_hidden_layers, num_outputs);
+    fprintf(stderr, "Min neuron val: %li, Max neuron val: %li\n",
+            MIN_NEURON_VAL, MAX_NEURON_VAL);
     fprintf(stderr, "Quantized values: %li\n", QUANTIZED_VALUES);
 
     // Define array to pick random data from dataset
@@ -241,7 +242,8 @@ int CNN::train(int epochs, int batches_size, int max_error_percent) {
         if ((e % 100) == 0) {
             calc_overall_mean_out_error();
         }
-        if (overall_mean_out_error <= MAX_NEURON_VAL * max_error_percent / 100 &&
+        if (overall_mean_out_error <=
+                MAX_NEURON_VAL * max_error_percent / 100 &&
             !converged) {
             converged = true;
             epochs = e * 105 / 100;
