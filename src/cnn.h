@@ -12,7 +12,7 @@
 #define MAX_NEURON_VAL ((((long int) 1) << (QUANTIZED_BITS - 1)) - 1)
 #define MIN_NEURON_VAL (-(((long int) 1) << (QUANTIZED_BITS - 1)))
 #define RELU_LEAK_FACTOR_PERCENT 10
-#define LEARNING_RATE_PER_100000 1
+#define LEARNING_RATE_PER_100000 10
 #define INIT_WEIGHT_SCALE_DOWN_FACTOR (MAX_NEURON_VAL / 2)
 // Makes the CNN training reproducible
 //#define FIX_RANDOMNESS
@@ -41,7 +41,7 @@ typedef long int value_t;
 
 class Neuron {
    public:
-    value_t value_sum = 0;
+    value_t value_batch_sum = 0;
     value_t value = 0;
     value_t bias = 0;
     value_t error = 0;
@@ -81,7 +81,7 @@ class CNN {
     Neuron **hidden_layers[MAX_HIDDEN_LAYERS] = {};
     Neuron *output_layer[MAX_OUTPUTS] = {};
     TrainingData *training_data[MAX_TRAINING_DATA] = {};
-    value_t overall_error = 0;
+    value_t overall_mean_out_error = 0;
 
    public:
     CNN(int num_inputs, int num_hidden_layers, int *num_hidden_nodes_per_layer,
@@ -95,7 +95,7 @@ class CNN {
     int forward_pass();
     int train(int epochs, int batches_size, int max_error_percent);
     int run(value_t *data_inputs, value_t *data_outputs);
-    int calc_overall_error();
+    int calc_overall_mean_out_error();
     value_t clip_error(value_t error, int batches_size);
     int print();
     int rand_weight_or_bias();

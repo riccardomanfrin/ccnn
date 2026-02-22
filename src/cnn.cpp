@@ -169,7 +169,7 @@ int average_weights_and_bias(Neuron* n, int prev_num_inputs, void** arg) {
 }
 int clear_minibatch_context(Neuron* n, int prev_num_inputs, void** _arg) {
     n->value = 0;
-    n->value_sum = 0;
+    n->value_batch_sum = 0;
     n->error = 0;
     return 0;
 }
@@ -199,7 +199,7 @@ int CNN::load_inputs(value_t* input_data) {
 int CNN::clear_inputs_context() {
     Neuron** inputs = input_layer;
     for (int i = 0; i < num_inputs; i++) {
-        inputs[i]->value_sum = 0;
+        inputs[i]->value_batch_sum = 0;
     }
     return 0;
 }
@@ -238,9 +238,9 @@ int CNN::train(int epochs, int batches_size, int max_error_percent) {
     // For each epoch (that is, a complete iteration on the data set),
     for (int e = 0; e < epochs; e++) {
         if ((e % 100) == 0) {
-            calc_overall_error();
+            calc_overall_mean_out_error();
         }
-        if (overall_error <= MAX_NEURON_VAL * max_error_percent / 100 &&
+        if (overall_mean_out_error <= MAX_NEURON_VAL * max_error_percent / 100 &&
             !converged) {
             converged = true;
             epochs = e * 105 / 100;
@@ -328,7 +328,7 @@ int CNN::adjust_weights_and_biases(int layer_neurons, Neuron** layer,
         layer[k]->bias += clip_error(layer[k]->error, batches_size);
         for (int j = 0; j < prev_layer_neurons; j++) {
             value_t weight_adjustment_error = clip_error(
-                layer[k]->error * prev_layer[j]->value_sum / batches_size,
+                layer[k]->error * prev_layer[j]->value_batch_sum / batches_size,
                 batches_size);
             layer[k]->weights[j] += weight_adjustment_error;
 #ifdef LAYERS_QUANTIZED_NORMALIZATION1
@@ -435,7 +435,7 @@ int CNN::calc_layer(int prev_layer_neurons, Neuron** prev_layer,
 #endif
 
     for (int i = 0; i < prev_layer_neurons; i++) {
-        prev_layer[i]->value_sum += prev_layer[i]->value;
+        prev_layer[i]->value_batch_sum += prev_layer[i]->value;
     }
     // and each of its nodes
     for (int n = 0; n < layer_neurons; n++) {
@@ -482,25 +482,25 @@ int CNN::run(value_t* data_inputs, value_t* data_outputs) {
     }
     return 0;
 }
-int CNN::calc_overall_error() {
-    overall_error = 0;
+int CNN::calc_overall_mean_out_error() {
+    overall_mean_out_error = 0;
     value_t output_data[num_outputs];
     for (int d = 0; d < training_data_amount; d++) {
         run(training_data[d]->inputs, output_data);
         for (int i = 0; i < num_outputs; i++) {
-            overall_error +=
+            overall_mean_out_error +=
                 absval(output_data[i] - training_data[d]->outputs[i]->value);
         }
     }
-    overall_error /= (training_data_amount * num_outputs);
-    return overall_error;
+    overall_mean_out_error /= (training_data_amount * num_outputs);
+    return overall_mean_out_error;
 }
 
 value_t CNN::clip_error(value_t error, int batches_size) {
     value_t clip_value =
-        overall_error * LEARNING_RATE_PER_100000 / 100000 / batches_size;
+        overall_mean_out_error * LEARNING_RATE_PER_100000 / 100000;
     if (clip_value == 0) {
-        clip_value = 5;
+        clip_value = 1;
     }
     if (error > clip_value)
         error = clip_value;
@@ -517,14 +517,14 @@ int CNN::print() {
         run(data_inputs[i], data_outputs[i]);
     }
 #ifdef USE_FLOATS
-    printf("%f, %f, %f, %f, %f, %f, %f, ", overall_error,
+    printf("%f, %f, %f, %f, %f, %f, %f, ", overall_mean_out_error,
            hidden_layers[0][0]->weights[0], hidden_layers[0][0]->weights[1],
            hidden_layers[0][1]->weights[0], hidden_layers[0][1]->weights[1],
            output_layer[0]->weights[0], output_layer[0]->weights[1]);
     printf("%f, %f, %f, %f\n", data_outputs[0][0], data_outputs[1][0],
            data_outputs[2][0], data_outputs[3][0]);
 #else
-    printf("%li, %li, %li, %li, %li, %li, %li, ", overall_error,
+    printf("%li, %li, %li, %li, %li, %li, %li, ", overall_mean_out_error,
            hidden_layers[0][0]->weights[0], hidden_layers[0][0]->weights[1],
            hidden_layers[0][1]->weights[0], hidden_layers[0][1]->weights[1],
            output_layer[0]->weights[0], output_layer[0]->weights[1]);
