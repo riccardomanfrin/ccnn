@@ -1,5 +1,9 @@
 #!/bin/bash
 
+#hw_{[x][y]} is hidden node x weight when coming from backward node y
+#ow_{[x][y]} is output node x weight when coming from hidden node y
+#v_{kq} is the output value for input i[0] = k and input i[1] = q
+
 gnuplot -persist <<EOF
 set terminal wxt size 1024,768;
 set title "Live Data";
