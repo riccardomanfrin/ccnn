@@ -10,7 +10,6 @@ set title "Live Data";
 
 set xlabel "Time";
 set ylabel "Value";
-set autoscale;
 
 plot "out.csv" \
    using 0:1 with lines linewidth 2 lc rgb "black" title "error_{overall}", \

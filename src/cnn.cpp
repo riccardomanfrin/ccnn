@@ -20,28 +20,6 @@ static inline value_t absval(value_t val) {
     return val;
 }
 
-#ifdef LAYERS_QUANTIZED_NORMALIZATION
-
-static bool needs_normalization(const value_t max_neuron_val) {
-    return max_neuron_val < MIN_NEURON_VAL || max_neuron_val > MAX_NEURON_VAL;
-}
-
-static int normalize(value_t& val, const value_t max_neuron_val) {
-
-    if (absval(max_neuron_val) > MAX_NEURON_VAL) {
-        // We scale by 2 to allow the dynamic to also grow
-        val = val * MAX_NEURON_VAL / absval(max_neuron_val) / 20;
-    }
-    if (val < MIN_NEURON_VAL)
-       throw "Normalization error: value underflow"; 
-    else if (val > MAX_NEURON_VAL)
-        throw "Normalization error: value overflow";
-
-    return 0;
-}
-
-#endif
-
 CNN::CNN(int num_inputs, int num_hidden_layers,
          int* _num_hidden_nodes_per_layer, int num_outputs)
     : num_inputs(num_inputs),
@@ -53,14 +31,16 @@ CNN::CNN(int num_inputs, int num_hidden_layers,
     for (int i = 0; i < num_inputs; i++) {
         input_layer[i] = new Neuron(0);
     }
+    int prev_layer_nodes = num_inputs;
     for (int l = 0; l < num_hidden_layers; l++) {
         int curr_layer_num_hidden_nodes = num_hidden_nodes_per_layer[l];
         hidden_layers[l] =
             (Neuron**)malloc(sizeof(Neuron**) * curr_layer_num_hidden_nodes);
 
         for (int n = 0; n < curr_layer_num_hidden_nodes; n++) {
-            hidden_layers[l][n] = new Neuron(num_inputs);
+            hidden_layers[l][n] = new Neuron(prev_layer_nodes);
         }
+        prev_layer_nodes = curr_layer_num_hidden_nodes;
     }
     for (int k = 0; k < num_outputs; k++) {
         output_layer[k] =
@@ -130,7 +110,7 @@ int CNN::save(const char* file) {
     FILE* f = fopen(file, "w");
     value_t* data = (value_t*)calloc(1000000, sizeof(value_t));
     value_t* pointer = data;
-    iterate_forward(&serialize_cnn_params, ((void**)&pointer));
+    iterate(&serialize_cnn_params, ((void**)&pointer));
     size_t s = (pointer - data) * sizeof(value_t);
     fwrite(data, s, 1, f);
     fclose(f);
@@ -158,7 +138,7 @@ static int deserialize_cnn_params(Neuron* n, int prev_num_inputs, void** arg) {
 int CNN::load(const char* file) {
     FILE* f = fopen(file, "r");
     if (f == NULL) return -1;
-    iterate_forward(&deserialize_cnn_params, ((void**)&f));
+    iterate(&deserialize_cnn_params, ((void**)&f));
     fclose(f);
     return 0;
 }
@@ -175,11 +155,13 @@ int clear_minibatch_context(Neuron* n, int prev_num_inputs, void** _arg) {
     n->value = 0;
     n->error = 0;
     n->bias_gradient = 0;
-    n->weight_gradient = 0;
+    for (int i = 0; i < n->num_inputs; i++) {
+        n->weight_gradient[i] = 0;
+    }
     return 0;
 }
 
-int CNN::iterate_forward(int (*action)(Neuron* n, int prev_num_inputs, void** arg),
+int CNN::iterate(int (*action)(Neuron* n, int prev_num_inputs, void** arg),
                  void** arg) {
     int prev_num_inputs = num_inputs;
     for (int l = 0; l < num_hidden_layers; l++) {
@@ -190,6 +172,38 @@ int CNN::iterate_forward(int (*action)(Neuron* n, int prev_num_inputs, void** ar
     }
     for (int k = 0; k < num_outputs; k++) {
         action(output_layer[k], prev_num_inputs, arg);
+    }
+    return 0;
+}
+
+int CNN::layer_iterate_fwd(layer_iterate_fwd_cbk_t action, void* arg) {
+    Neuron** prev_layer = input_layer;
+    int prev_layer_neurons = num_inputs;
+    for (int l = 0; l < num_hidden_layers; l++) {
+        Neuron** layer = hidden_layers[l];
+        int layer_neurons = num_hidden_nodes_per_layer[l];
+        action(layer_neurons, layer, prev_layer_neurons, prev_layer, arg);
+        prev_layer = layer;
+        prev_layer_neurons = layer_neurons;
+    }
+    action(num_outputs, output_layer, prev_layer_neurons, prev_layer, arg);
+    return 0;
+}
+
+int CNN::node_iterate_fwd(node_iterate_fwd_cbk_t action, void* arg) {
+    Neuron** prev_layer = input_layer;
+    int prev_layer_neurons = num_inputs;
+    for (int l = 0; l < num_hidden_layers; l++) {
+        Neuron** layer = hidden_layers[l];
+        int layer_neurons = num_hidden_nodes_per_layer[l];
+        for (int k = 0; k < layer_neurons; k++) {
+            action(layer[k], prev_layer_neurons, prev_layer, arg);
+        }
+        prev_layer = layer;
+        prev_layer_neurons = layer_neurons;
+    }
+    for (int k = 0; k < num_outputs; k++) {
+        action(output_layer[k], prev_layer_neurons, prev_layer, arg);
     }
     return 0;
 }
@@ -254,7 +268,7 @@ int CNN::train(int epochs, int batches_size, int max_error_percent) {
 
         // for each data set element,
         for (int d = 0; d < training_data_amount;) {
-            iterate_forward(clear_minibatch_context, NULL);
+            iterate(clear_minibatch_context, NULL);
             int b = 0;
             // and picking from a smaller number of mini batches,
             for (; b < batches_size && d + b < training_data_amount; b++) {
@@ -275,38 +289,25 @@ int CNN::train(int epochs, int batches_size, int max_error_percent) {
 
                 // Compute error in output weights
                 calc_output_error(num_outputs, output_layer, td->outputs);
-            }  // mini batches
 
-            // Normalize output error
-            normalize_output_error(num_outputs, output_layer);
+                // Compute error in backard hidden layers
+                Neuron** layer = output_layer;
+                int layer_neurons = num_outputs;
+                for (int l = num_hidden_layers - 1; l >= 0; l--) {
+                    Neuron** prev_layer = hidden_layers[l];
+                    int prev_layer_neurons = num_hidden_nodes_per_layer[l];
+                    back_propagate_errors(layer_neurons, layer,
+                                          prev_layer_neurons, prev_layer);
+                    layer = prev_layer;
+                    layer_neurons = prev_layer_neurons;
+                }
 
-            // Compute error in backard hidden layers
-            Neuron** layer = output_layer;
-            int layer_neurons = num_outputs;
-            for (int l = num_hidden_layers - 1; l >= 0; l--) {
-                Neuron** prev_layer = hidden_layers[l];
-                int prev_layer_neurons = num_hidden_nodes_per_layer[l];
-                back_propagate_errors(layer_neurons, layer, prev_layer_neurons,
-                                      prev_layer);
-                layer = prev_layer;
-                layer_neurons = prev_layer_neurons;
-            }
+                // Apply changes in output & hidden nodes weights and biases
+                node_iterate_fwd(&accumilate_gradients, NULL);
 
-            // Apply changes in output & hidden nodes weights and biases
-            Neuron** prev_layer = input_layer;
-            int prev_layer_neurons = num_inputs;
-            for (int l = 0; l < num_hidden_layers; l++) {
-                Neuron** layer = hidden_layers[l];
-                int layer_neurons = num_hidden_nodes_per_layer[l];
-                adjust_weights_and_biases(layer_neurons, layer,
-                                          prev_layer_neurons, prev_layer,
-                                          batches_size);
-                prev_layer = layer;
-                prev_layer_neurons = layer_neurons;
-            }
+            }  // minibatch
 
-            adjust_weights_and_biases(num_outputs, output_layer,
-                                      prev_layer_neurons, prev_layer, b);
+            layer_iterate_fwd(apply_and_clear_gradients, (void*)&batches_size);
 
             d += b;
             if (e % (100) == 0) {
@@ -317,56 +318,49 @@ int CNN::train(int epochs, int batches_size, int max_error_percent) {
     return 0;
 }
 
-int CNN::adjust_weights_and_biases(int layer_neurons, Neuron** layer,
+int CNN::accumilate_gradients(Neuron* n, int prev_layer_neurons,
+                              Neuron** prev_layer, void* _arg) {
+    n->bias_gradient += n->error;
+    for (int j = 0; j < prev_layer_neurons; j++) {
+        n->weight_gradient[j] += n->error * prev_layer[j]->value;
+    }
+    return 0;
+}
+static void acc(value_t& base, value_t val) {
+    val = absval(val);
+    if (base < val) base = val;
+}
+
+int CNN::apply_and_clear_gradients(int layer_neurons, Neuron** layer,
                                    int prev_layer_neurons, Neuron** prev_layer,
-                                   int batches_size) {
-#ifdef LAYERS_QUANTIZED_NORMALIZATION1
-    value_t max_layer_bias_abs_val = 0;
-    value_t max_layer_weight_abs_val = 0;
-#endif
+                                   void* _arg) {
+    value_t max_bias_gradient = MAX_NEURON_VAL;
+    value_t max_weight_gradient = MAX_NEURON_VAL;
+
     for (int k = 0; k < layer_neurons; k++) {
-        layer[k]->bias += layer[k]->error;
+        acc(max_bias_gradient, layer[k]->bias_gradient);
         for (int j = 0; j < prev_layer_neurons; j++) {
-            value_t weight_adjustment_error = 
-                layer[k]->error * prev_layer[j]->value;
-            layer[k]->weights[j] += weight_adjustment_error;
-#ifdef LAYERS_QUANTIZED_NORMALIZATION1
-            value_t absvalweight = absval(layer[k]->weights[j]);
-            if (absvalweight > max_layer_weight_abs_val) {
-                max_layer_weight_abs_val = absvalweight;
-            }
-#endif
-        }
-#ifdef LAYERS_QUANTIZED_NORMALIZATION1
-        value_t absvalbias = absval(layer[k]->bias);
-        if (absvalbias > max_layer_bias_abs_val) {
-            max_layer_bias_abs_val = absvalbias;
-        }
-#endif
-    }
-#ifdef LAYERS_QUANTIZED_NORMALIZATION1
-    if (needs_normalization(max_layer_bias_abs_val)) {
-        for (int k = 0; k < layer_neurons; k++) {
-            normalize(layer[k]->bias, max_layer_bias_abs_val);
-        }
-    }
-    if (needs_normalization(max_layer_weight_abs_val)) {
-        for (int k = 0; k < layer_neurons; k++) {
-            for (int j = 0; j < prev_layer_neurons; j++) {
-                normalize(layer[k]->weights[j], max_layer_weight_abs_val);
-            }
+            acc(max_weight_gradient, layer[k]->weight_gradient[j]);
         }
     }
 
-#endif
+    for (int k = 0; k < layer_neurons; k++) {
+        layer[k]->bias += layer[k]->bias_gradient * LEARNING_RATE_PER_1000 *
+                          MAX_NEURON_VAL / 1000 / max_bias_gradient;
+        layer[k]->bias_gradient = 0;
+        for (int j = 0; j < prev_layer_neurons; j++) {
+            layer[k]->weights[j] += layer[k]->weight_gradient[j] *
+                                    MAX_NEURON_VAL * LEARNING_RATE_PER_1000 /
+                                    1000 / max_weight_gradient;
+            layer[k]->weight_gradient[j] = 0;
+        }
+    }
+
     return 0;
 }
 
 int CNN::back_propagate_errors(int layer_neurons, Neuron** layer,
                                int prev_layer_neurons, Neuron** prev_layer) {
-#ifdef LAYERS_QUANTIZED_NORMALIZATION
-    value_t max_layer_error_abs_val = MAX_NEURON_VAL + 1;
-#endif
     value_t prev_layer_neurons_delta_error[prev_layer_neurons];
 
     // backprop goes from "layer" to "prev_layer"
@@ -377,24 +371,11 @@ int CNN::back_propagate_errors(int layer_neurons, Neuron** layer,
             prev_layer_neurons_delta_error[j] +=
                 layer[k]->error * layer[k]->weights[j];
         }
-#ifdef LAYERS_QUANTIZED_NORMALIZATION
-        value_t absvalerr = absval(prev_layer_neurons_delta_error[j]);
-        if (absvalerr > max_layer_error_abs_val) {
-            max_layer_error_abs_val = absvalerr;
-        }
-#endif
     }
-#ifdef LAYERS_QUANTIZED_NORMALIZATION
-    if (needs_normalization(max_layer_error_abs_val)) {
-        for (int j = 0; j < prev_layer_neurons; j++) {
-            normalize(prev_layer_neurons_delta_error[j],
-                      max_layer_error_abs_val);
-        }
-    }
-#endif
+
     for (int j = 0; j < prev_layer_neurons; j++) {
-        prev_layer[j]->error += prev_layer_neurons_delta_error[j] /
-                                drelu_reciprocal(prev_layer[j]->value);
+        prev_layer[j]->error = prev_layer_neurons_delta_error[j] /
+                               drelu_reciprocal(prev_layer[j]->value);
     }
 
     return 0;
@@ -404,45 +385,22 @@ int CNN::calc_output_error(int layer_neurons, Neuron** layer,
                            Neuron** expected_values) {
     // Compute change in output weights
     for (int k = 0; k < layer_neurons; k++) {
-        layer[k]->error += (expected_values[k]->value - layer[k]->value) /
-                           drelu_reciprocal(layer[k]->value);
+        layer[k]->error = (expected_values[k]->value - layer[k]->value) /
+                          drelu_reciprocal(layer[k]->value);
     }
-    return 0;
-}
-int CNN::normalize_output_error(int layer_neurons, Neuron** layer) {
-#ifdef LAYERS_QUANTIZED_NORMALIZATION
-    value_t max_layer_error_abs_val = MAX_NEURON_VAL + 1;
-    for (int k = 0; k < layer_neurons; k++) {
-        value_t absvalerr = absval(layer[k]->error);
-        if (absvalerr > max_layer_error_abs_val) {
-            max_layer_error_abs_val = absvalerr;
-        }
-    }
-    if (needs_normalization(max_layer_error_abs_val)) {
-        for (int k = 0; k < layer_neurons; k++) {
-            normalize(layer[k]->error, max_layer_error_abs_val);
-        }
-    }
-#endif
     return 0;
 }
 
 int CNN::calc_layer(int prev_layer_neurons, Neuron** prev_layer,
                     int layer_neurons, Neuron** layer) {
-#ifdef LAYERS_QUANTIZED_NORMALIZATION
-    value_t max_neuron_val = layer[0]->value;
-#endif
-
-    for (int i = 0; i < prev_layer_neurons; i++) {
-        prev_layer[i]->value_batch_sum += prev_layer[i]->value;
-    }
     // and each of its nodes
     for (int n = 0; n < layer_neurons; n++) {
         Neuron* curr = layer[n];
         curr->value = curr->bias;
         for (int i = 0; i < prev_layer_neurons; i++) {
             if (prev_layer[i]->value != 0) {
-                curr->value += curr->weights[i] * prev_layer[i]->value;
+                curr->value +=
+                    curr->weights[i] * prev_layer[i]->value / MAX_NEURON_VAL;
             }
 
             /* (1<<31) - 1 - (256*256) */
@@ -451,20 +409,7 @@ int CNN::calc_layer(int prev_layer_neurons, Neuron** prev_layer,
                 throw "Potential overflow!!!!";
             }
         }
-
-#ifdef LAYERS_QUANTIZED_NORMALIZATION
-        if (absval(curr->value) > absval(max_neuron_val))
-            max_neuron_val = curr->value;
-#endif
     }
-
-#ifdef LAYERS_QUANTIZED_NORMALIZATION
-    if (needs_normalization(max_neuron_val)) {
-        for (int n = 0; n < layer_neurons; n++) {
-            normalize(layer[n]->value, max_neuron_val);
-        }
-    }
-#endif
 
     for (int n = 0; n < layer_neurons; n++) {
         Neuron* curr = layer[n];
@@ -493,19 +438,6 @@ int CNN::calc_overall_mean_out_error() {
     }
     overall_mean_out_error /= (training_data_amount * num_outputs);
     return overall_mean_out_error;
-}
-
-value_t CNN::clip_error(value_t error, int batches_size) {
-    value_t clip_value =
-        overall_mean_out_error * LEARNING_RATE_PER_100000 / 100000;
-    if (clip_value < MAX_NEURON_VAL / WEIGHT_BIAS_SCALE_DOWN_FACTOR) {
-        clip_value = MAX_NEURON_VAL / WEIGHT_BIAS_SCALE_DOWN_FACTOR;
-    }
-    if (error > clip_value)
-        error = clip_value;
-    else if (error < -clip_value)
-        error = -clip_value;
-    return error;
 }
 
 int CNN::print() {
