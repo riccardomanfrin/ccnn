@@ -333,7 +333,8 @@ static void acc(value_t& base, value_t val) {
 
 int CNN::apply_and_clear_gradients(int layer_neurons, Neuron** layer,
                                    int prev_layer_neurons, Neuron** prev_layer,
-                                   void* _arg) {
+                                   void* arg) {
+    int batches_size = *(int*)arg;
     value_t max_bias_gradient = MAX_NEURON_VAL;
     value_t max_weight_gradient = MAX_NEURON_VAL;
 
@@ -346,12 +347,12 @@ int CNN::apply_and_clear_gradients(int layer_neurons, Neuron** layer,
 
     for (int k = 0; k < layer_neurons; k++) {
         layer[k]->bias += layer[k]->bias_gradient * LEARNING_RATE_PER_1000 *
-                          MAX_NEURON_VAL / 1000 / max_bias_gradient;
+                          MAX_NEURON_VAL / 1000 / max_bias_gradient / batches_size;
         layer[k]->bias_gradient = 0;
         for (int j = 0; j < prev_layer_neurons; j++) {
             layer[k]->weights[j] += layer[k]->weight_gradient[j] *
                                     MAX_NEURON_VAL * LEARNING_RATE_PER_1000 /
-                                    1000 / max_weight_gradient;
+                                    1000 / max_weight_gradient / batches_size;
             layer[k]->weight_gradient[j] = 0;
         }
     }
