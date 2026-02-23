@@ -45,7 +45,7 @@ int main(int argc, char *argv[]) {
         printf(
             "oe, hw[0][0], hw[0][1], hw[1][0], hw[1][1], ow[0][0], ow[0][1], v00, "
             "v01, v10, v11\n");
-        cnn.train(100000, 3, 1);
+        cnn.train(10000, 3, 1);
         
         cnn.save("weights_and_biases.bin");
     }

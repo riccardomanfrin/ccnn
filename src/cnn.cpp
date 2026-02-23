@@ -335,35 +335,18 @@ int CNN::apply_and_clear_gradients(int layer_neurons, Neuron** layer,
                                    int prev_layer_neurons, Neuron** prev_layer,
                                    void* arg) {
     int batches_size = *(int*)arg;
-    value_t max_bias = MAX_NEURON_VAL;
-    value_t max_weight = MAX_NEURON_VAL;
 
     for (int k = 0; k < layer_neurons; k++) {
         layer[k]->bias += layer[k]->bias_gradient * LEARNING_RATE_PER_1000 /
                           1000 / batches_size;
-        // Clamping values
-        if (layer[k]->bias > MAX_NEURON_VAL) layer[k]->bias = MAX_NEURON_VAL;
-        if (layer[k]->bias < MIN_NEURON_VAL) layer[k]->bias = MIN_NEURON_VAL;
+
         layer[k]->bias_gradient = 0;
+        
         for (int j = 0; j < prev_layer_neurons; j++) {
             layer[k]->weights[j] += layer[k]->weight_gradient[j] *
                                     LEARNING_RATE_PER_1000 / 1000 /
                                     batches_size;
-            // Clamping values.. the training decided it had to be big,
-            // scaling all neurons breaks the relationships
-            // clamping single values tell the CNN to adjust the rest to it
-            if (layer[k]->weights[j] > MAX_NEURON_VAL)
-                layer[k]->weights[j] = MAX_NEURON_VAL;
-            if (layer[k]->weights[j] < MIN_NEURON_VAL)
-                layer[k]->weights[j] = MIN_NEURON_VAL;
             layer[k]->weight_gradient[j] = 0;
-        }
-    }
-
-    for (int k = 0; k < layer_neurons; k++) {
-        acc(max_bias, layer[k]->bias);
-        for (int j = 0; j < prev_layer_neurons; j++) {
-            acc(max_weight, layer[k]->weights[j]);
         }
     }
 
