@@ -387,7 +387,6 @@ int CNN::calc_output_error(int layer_neurons, Neuron** layer,
 
 int CNN::calc_layer(int prev_layer_neurons, Neuron** prev_layer,
                     int layer_neurons, Neuron** layer) {
-    // and each of its nodes
     for (int n = 0; n < layer_neurons; n++) {
         Neuron* curr = layer[n];
         curr->value = 0;
@@ -402,7 +401,18 @@ int CNN::calc_layer(int prev_layer_neurons, Neuron** prev_layer,
             }
         }
 
-        curr->value = curr->value / MAX_NEURON_VAL + curr->bias;
+        /**
+         * We want to scale the contributions from previous layer:
+         * 1. MAX_NEURON_VAL : this scales down against the max value reachable
+         * by neuron weights (and val): since weight and val can be within MAX_NEURON_VAL,
+         * to keep contributions ~ MAX_NEURON_VAL you want to divide val * weight
+         * which are proportional to ~ MAX_NEURON_VAL^2, so we divide by MAX_NEURON_VAL,
+         * to bring it back to MAX_NEURON_VAL
+         * 2. prev_layer_neurons: this scales against the number of contributors
+         * to the neuron value (that is, the number of previous layer nodes)
+         */
+        curr->value =
+            curr->value / prev_layer_neurons / MAX_NEURON_VAL + curr->bias;
     }
 
     for (int n = 0; n < layer_neurons; n++) {
