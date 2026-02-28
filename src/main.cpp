@@ -17,7 +17,7 @@ int load_data(CNN &cnn) {
 }
 
 int main(int argc, char *argv[]) {
-    int hidden_layers_nodes_list[] = {2};
+    int hidden_layers_nodes_list[] = {20};
     CNN cnn(2, 1, hidden_layers_nodes_list, 1);
     cnn.init();
     cnn.load("weights_and_biases.bin");
