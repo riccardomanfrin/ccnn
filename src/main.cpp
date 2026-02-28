@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "cnn.h"
+#include "cnn_state_controller.h"
 
 int load_data(CNN &cnn) {
     value_t data_inputs[4][2] = {
@@ -15,37 +16,11 @@ int load_data(CNN &cnn) {
 }
 
 int main(int argc, char *argv[]) {
-    int hidden_layers_nodes_list[] = {2, 2};
-    CNN cnn(2, 2, hidden_layers_nodes_list, 1);
+    int hidden_layers_nodes_list[] = {10};
+    CNN cnn(2, 1, hidden_layers_nodes_list, 1);
     cnn.init();
-    cnn.load("weights_and_biases.bin");
-
-    if (argc > 1) {
-        if (strcmp(argv[1], "test") == 0) {
-            value_t input_data[2] = {ZERO, ZERO};
-            value_t output_data[1] = {255};
-            if (argc == 4) {
-                input_data[0] = atof(argv[2]);
-                input_data[1] = atof(argv[3]);
-            }
-            cnn.run(input_data, output_data);
-#ifdef USE_FLOATS
-            printf("%f\n", output_data[0]);
-#else
-            printf("%li\n", output_data[0]);
-#endif
-            return 0;
-        } else if (strcmp(argv[1], "print") == 0) {
-            cnn.print();
-        }
-    } else {
-        load_data(cnn);
-        printf(
-            "oe, hw[0][0], hw[0][1], hw[1][0], hw[1][1], ow[0][0], ow[0][1], v00, "
-            "v01, v10, v11\n");
-        cnn.train(1000, 3, 1);
-        
-        cnn.save("weights_and_biases.bin");
-    }
+    load_data(cnn);
+    CNNStateController exporter(cnn);
+    
     return 0;
 }

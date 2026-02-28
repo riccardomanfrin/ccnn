@@ -1,4 +1,4 @@
-# ccnn
+# XOR meets CNN weekend project
 
 Educational/learning C/C++ code convolutional neural network
 
@@ -16,9 +16,12 @@ Compared to it I've added few additional features:
 
 1. generalized network (with a configurable number of layers)
 2. training with minibatches (for better statistical convergence)
-3. proportional error clipping based on the overall error (to avoid exploding gradients)
-4. usage of leaky relu (for negative values, to avoid dead neurons)
-5. WIP: QUANTIZATION
+3. usage of leaky relu (for negative values, to avoid dead neurons)
+4. Quantization!!!!
+
+# Building intuition
+
+![Building intuition](intuition.png)
 
 # Lessons learned
 
@@ -32,3 +35,5 @@ Compared to it I've added few additional features:
 8. Normalization must be done on the activations before the pass through the activation function.
 9. Normalization / clipping is applied to the gradient error and not directly the weights and biases after the gradient is applied (added), otherwise you deviate the gradient descent.
 10. Normalization / clipping must be done per layer, not on the overall network.
+11. My minimal setup is to learn the XOR function. The minimal network for this is 2 inputs, 1layer with 2 nodes and 1 output. The structural "rigidity" of this configuration, coupled with the used of quantized values (not using floats) makes convergence occur ~50% of the times. Otherwise we reach a symmetrical non convergence point from which we cannot escape. Adding nodes to the hidden layer allows for >> 50% convergence.
+11. Still learning and MAYBE some of the above quotes might prove wrong!

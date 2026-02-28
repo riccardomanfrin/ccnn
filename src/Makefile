@@ -1,4 +1,4 @@
-SRC = cnn.cpp datagen/bmp.cpp datagen/cam.cpp datagen/surface.cpp main.cpp
+SRC = cnn.cpp datagen/bmp.cpp datagen/cam.cpp datagen/surface.cpp main.cpp cnn_state_controller.cpp
 	  
 OBJ=$(SRC:.cpp=.o)
 
