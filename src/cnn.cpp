@@ -397,8 +397,7 @@ int CNN::calc_layer(int prev_layer_neurons, Neuron** prev_layer,
             }
 
             /* (1<<31) - 1 - (256*256) */
-            if (curr->value > OVERFLOW_BOUND ||
-                curr->value < (value_t)(-OVERFLOW_BOUND)) {
+            if (absval(curr->value) > OVERFLOW_BOUND) {
                 throw "Potential overflow!!!!";
             }
         }
