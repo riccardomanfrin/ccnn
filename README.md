@@ -37,3 +37,10 @@ Compared to it I've added few additional features:
 10. Normalization / clipping must be done per layer, not on the overall network.
 11. My minimal setup is to learn the XOR function. The minimal network for this is 2 inputs, 1layer with 2 nodes and 1 output. The structural "rigidity" of this configuration, coupled with the used of quantized values (not using floats) makes convergence occur ~50% of the times. Otherwise we reach a symmetrical non convergence point from which we cannot escape. Adding nodes to the hidden layer allows for >> 50% convergence.
 11. Still learning and MAYBE some of the above quotes might prove wrong!
+
+
+# ToDo
+
+1. Understand more on proper scaling with 2x2 hidden layers CNN for XOR
+2. Possibly allow configuring the CNN from UI
+3. Decode MNIST handwritten and try it out
