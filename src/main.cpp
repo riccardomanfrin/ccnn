@@ -4,21 +4,19 @@
 
 #include "cnn.h"
 
-#define INPUT_SAMPLES 4
-
 int load_data(CNN &cnn) {
     value_t data_inputs[4][2] = {
         {ZERO, ZERO}, {ZERO, ONE}, {ONE, ZERO}, {ONE, ONE}};
     value_t data_outputs[4][1] = {{ZERO}, {ONE}, {ONE}, {ZERO}};
-    for (int i = 0; i < INPUT_SAMPLES; i++) {
+    for (int i = 0; i < 4; i++) {
         cnn.load_training_data(data_inputs[i], data_outputs[i]);
     }
     return 0;
 }
 
 int main(int argc, char *argv[]) {
-    int hidden_layers_nodes_list[] = {20};
-    CNN cnn(2, 1, hidden_layers_nodes_list, 1);
+    int hidden_layers_nodes_list[] = {2, 2};
+    CNN cnn(2, 2, hidden_layers_nodes_list, 1);
     cnn.init();
     cnn.load("weights_and_biases.bin");
 
@@ -45,7 +43,7 @@ int main(int argc, char *argv[]) {
         printf(
             "oe, hw[0][0], hw[0][1], hw[1][0], hw[1][1], ow[0][0], ow[0][1], v00, "
             "v01, v10, v11\n");
-        cnn.train(10000, 3, 1);
+        cnn.train(1000, 3, 1);
         
         cnn.save("weights_and_biases.bin");
     }
