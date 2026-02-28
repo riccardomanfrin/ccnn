@@ -341,7 +341,7 @@ int CNN::apply_and_clear_gradients(int layer_neurons, Neuron** layer,
                           1000 / batches_size;
 
         layer[k]->bias_gradient = 0;
-        
+
         for (int j = 0; j < prev_layer_neurons; j++) {
             layer[k]->weights[j] += layer[k]->weight_gradient[j] *
                                     LEARNING_RATE_PER_1000 / 1000 /
@@ -390,11 +390,10 @@ int CNN::calc_layer(int prev_layer_neurons, Neuron** prev_layer,
     // and each of its nodes
     for (int n = 0; n < layer_neurons; n++) {
         Neuron* curr = layer[n];
-        curr->value = curr->bias;
+        curr->value = 0;
         for (int i = 0; i < prev_layer_neurons; i++) {
             if (prev_layer[i]->value != 0) {
-                curr->value +=
-                    curr->weights[i] * prev_layer[i]->value / MAX_NEURON_VAL;
+                curr->value += curr->weights[i] * prev_layer[i]->value;
             }
 
             /* (1<<31) - 1 - (256*256) */
@@ -403,6 +402,8 @@ int CNN::calc_layer(int prev_layer_neurons, Neuron** prev_layer,
                 throw "Potential overflow!!!!";
             }
         }
+
+        curr->value = curr->value / MAX_NEURON_VAL + curr->bias;
     }
 
     for (int n = 0; n < layer_neurons; n++) {
