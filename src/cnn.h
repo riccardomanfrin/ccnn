@@ -13,8 +13,8 @@
 #define MAX_NEURON_VAL ((((long int)1) << (QUANTIZED_BITS - 1)) - 1)
 #define MIN_NEURON_VAL (-(((long int)1) << (QUANTIZED_BITS - 1)))
 #define RELU_LEAK_FACTOR_PERCENT 4
-#define LEARNING_RATE_PER_1000 20
-#define WEIGHT_BIAS_SCALE_DOWN_FACTOR 10
+#define LEARNING_RATE_PER_1000 10
+#define WEIGHT_BIAS_SCALE_DOWN_FACTOR 4
 // Makes the CNN training reproducible
 //#define FIX_RANDOMNESS
 
