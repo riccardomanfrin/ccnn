@@ -235,12 +235,12 @@ int CNN::forward_pass() {
     return 0;
 }
 int CNN::train(int epochs, int batches_size, int max_error_percent) {
-    //fprintf(stderr,
-    //        "Creating CNN with %i inputs, %i hidden layers and %i outputs\n",
-    //        num_inputs, num_hidden_layers, num_outputs);
-    //fprintf(stderr, "Min neuron val: %li, Max neuron val: %li\n",
-    //        MIN_NEURON_VAL, MAX_NEURON_VAL);
-    //fprintf(stderr, "Quantized values: %li\n", QUANTIZED_VALUES);
+    // fprintf(stderr,
+    //         "Creating CNN with %i inputs, %i hidden layers and %i outputs\n",
+    //         num_inputs, num_hidden_layers, num_outputs);
+    // fprintf(stderr, "Min neuron val: %li, Max neuron val: %li\n",
+    //         MIN_NEURON_VAL, MAX_NEURON_VAL);
+    // fprintf(stderr, "Quantized values: %li\n", QUANTIZED_VALUES);
 
     // Define array to pick random data from dataset
     int order[training_data_amount];
@@ -249,6 +249,11 @@ int CNN::train(int epochs, int batches_size, int max_error_percent) {
     }
 
     bool converged = false;
+
+    int scaling_factor = 1;
+    for (int l = 0; l < num_hidden_layers - 1; l++) {
+        scaling_factor *= num_hidden_nodes_per_layer[l];
+    };
     // For each epoch (that is, a complete iteration on the data set),
     for (int e = 0; e < epochs; e++) {
         if ((e % 100) == 0) {
@@ -296,7 +301,7 @@ int CNN::train(int epochs, int batches_size, int max_error_percent) {
                 for (int l = num_hidden_layers - 1; l >= 0; l--) {
                     Neuron** prev_layer = hidden_layers[l];
                     int prev_layer_neurons = num_hidden_nodes_per_layer[l];
-                    back_propagate_errors(layer_neurons, layer,
+                    back_propagate_errors(scaling_factor, layer_neurons, layer,
                                           prev_layer_neurons, prev_layer);
                     layer = prev_layer;
                     layer_neurons = prev_layer_neurons;
@@ -353,8 +358,9 @@ int CNN::apply_and_clear_gradients(int layer_neurons, Neuron** layer,
     return 0;
 }
 
-int CNN::back_propagate_errors(int layer_neurons, Neuron** layer,
-                               int prev_layer_neurons, Neuron** prev_layer) {
+int CNN::back_propagate_errors(int scaling_factor, int layer_neurons,
+                               Neuron** layer, int prev_layer_neurons,
+                               Neuron** prev_layer) {
     value_t prev_layer_neurons_delta_error[prev_layer_neurons];
 
     // backprop goes from "layer" to "prev_layer"
@@ -367,9 +373,17 @@ int CNN::back_propagate_errors(int layer_neurons, Neuron** layer,
         }
     }
 
+    value_t max_error = 0;
     for (int j = 0; j < prev_layer_neurons; j++) {
         prev_layer[j]->error = prev_layer_neurons_delta_error[j] /
                                drelu_reciprocal(prev_layer[j]->value);
+        acc(max_error, prev_layer[j]->error);
+    }
+    if (max_error > MAX_NEURON_VAL) {
+        for (int j = 0; j < prev_layer_neurons; j++) {
+            prev_layer[j]->error =
+                prev_layer[j]->error * MAX_NEURON_VAL * 2 / max_error;
+        }
     }
 
     return 0;
@@ -404,10 +418,10 @@ int CNN::calc_layer(int prev_layer_neurons, Neuron** prev_layer,
         /**
          * We want to scale the contributions from previous layer:
          * 1. MAX_NEURON_VAL : this scales down against the max value reachable
-         * by neuron weights (and val): since weight and val can be within MAX_NEURON_VAL,
-         * to keep contributions ~ MAX_NEURON_VAL you want to divide val * weight
-         * which are proportional to ~ MAX_NEURON_VAL^2, so we divide by MAX_NEURON_VAL,
-         * to bring it back to MAX_NEURON_VAL
+         * by neuron weights (and val): since weight and val can be within
+         * MAX_NEURON_VAL, to keep contributions ~ MAX_NEURON_VAL you want to
+         * divide val * weight which are proportional to ~ MAX_NEURON_VAL^2, so
+         * we divide by MAX_NEURON_VAL, to bring it back to MAX_NEURON_VAL
          * 2. prev_layer_neurons: this scales against the number of contributors
          * to the neuron value (that is, the number of previous layer nodes)
          */
