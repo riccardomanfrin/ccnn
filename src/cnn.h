@@ -130,7 +130,7 @@ class CNN {
                    Neuron** layer);
     int calc_output_error(int layer_neurons, Neuron** layer,
                           Neuron** expected_values);
-    int back_propagate_errors(int layer_neurons, Neuron** layer,
+    int back_propagate_errors(int scaling_factor, int layer_neurons, Neuron** layer,
                               int prev_layer_neurons, Neuron** prev_layer);
     static int accumilate_gradients(Neuron* n, int prev_layer_neurons,
                                     Neuron** prev_layer, void* arg);

@@ -379,12 +379,12 @@ int CNN::back_propagate_errors(int scaling_factor, int layer_neurons,
                                drelu_reciprocal(prev_layer[j]->value);
         acc(max_error, prev_layer[j]->error);
     }
-    if (max_error > MAX_NEURON_VAL) {
-        for (int j = 0; j < prev_layer_neurons; j++) {
-            prev_layer[j]->error =
-                prev_layer[j]->error * MAX_NEURON_VAL * 2 / max_error;
-        }
-    }
+    //if (max_error > MAX_NEURON_VAL) {
+    //    for (int j = 0; j < prev_layer_neurons; j++) {
+    //        prev_layer[j]->error =
+    //            prev_layer[j]->error * MAX_NEURON_VAL / max_error;
+    //    }
+    //}
 
     return 0;
 }
@@ -426,7 +426,7 @@ int CNN::calc_layer(int prev_layer_neurons, Neuron** prev_layer,
          * to the neuron value (that is, the number of previous layer nodes)
          */
         curr->value =
-            curr->value / prev_layer_neurons / MAX_NEURON_VAL + curr->bias;
+            curr->value / MAX_NEURON_VAL + curr->bias;
     }
 
     for (int n = 0; n < layer_neurons; n++) {
