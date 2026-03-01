@@ -5,7 +5,7 @@
 #include "cnn.h"
 #include "cnn_state_controller.h"
 
-int load_data(CNN &cnn) {
+int load_data(CNN& cnn) {
     value_t data_inputs[4][2] = {
         {ZERO, ZERO}, {ZERO, ONE}, {ONE, ZERO}, {ONE, ONE}};
     value_t data_outputs[4][1] = {{ZERO}, {ONE}, {ONE}, {ZERO}};
@@ -15,12 +15,15 @@ int load_data(CNN &cnn) {
     return 0;
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
     int hidden_layers_nodes_list[] = {10};
     CNN cnn(2, 1, hidden_layers_nodes_list, 1);
     cnn.init();
     load_data(cnn);
+    printf(
+        "oe, hw[0][0], hw[0][1], hw[1][0], hw[1][1], ow[0][0], ow[0][1], v00, "
+        "v01, v10, v11\n");
     CNNStateController exporter(cnn);
-    
+
     return 0;
 }
