@@ -20,6 +20,7 @@ CNNStateController::CNNStateController(CNN& _cnn) : cnn(_cnn) {
 
     svr.Post("/run",
              [this](const httplib::Request& req, httplib::Response& res) {
+                 fprintf(stderr, "Running CNN\n");
                  auto j = json::parse(req.body);
                  value_t* input_data =
                      (value_t*)malloc(sizeof(value_t) * cnn.num_inputs);
@@ -43,6 +44,7 @@ CNNStateController::CNNStateController(CNN& _cnn) : cnn(_cnn) {
     svr.Post("/train",
              [this](const httplib::Request& req, httplib::Response& res) {
                  auto j = json::parse(req.body);
+                 fprintf(stderr, "Training CNN for %i epochs with batch size %i\n", (int) j["epochs"], (int) j["batch_size"]);
                  cnn.train(j["epochs"], j["batch_size"], 1);
                  json state = get_state();
                  res.set_content(state.dump(), "application/json");
@@ -50,6 +52,7 @@ CNNStateController::CNNStateController(CNN& _cnn) : cnn(_cnn) {
 
     svr.Post("/save",
              [this](const httplib::Request& req, httplib::Response& res) {
+                 fprintf(stderr, "Saving CNN\n");
                  cnn.save("weights_and_biases.bin");
                  json resp = {{"ok", true}};
                  res.set_content(resp.dump(), "application/json");
@@ -57,6 +60,7 @@ CNNStateController::CNNStateController(CNN& _cnn) : cnn(_cnn) {
 
     svr.Post("/load",
              [this](const httplib::Request& req, httplib::Response& res) {
+                 fprintf(stderr, "Loading CNN\n");
                  cnn.load("weights_and_biases.bin");
                  json state = get_state();
                  res.set_content(state.dump(), "application/json");
@@ -64,13 +68,14 @@ CNNStateController::CNNStateController(CNN& _cnn) : cnn(_cnn) {
 
     svr.Post("/reset",
              [this](const httplib::Request& req, httplib::Response& res) {
+                 fprintf(stderr, "Resetting CNN\n");
                  cnn.init();
                  json state = get_state();
                  res.set_content(state.dump(), "application/json");
              });
 
     svr.Get("/", [this](const httplib::Request&, httplib::Response& res) {
-        printf("Loading static content\n");
+        //fprintf(stderr, "Loading static content\n");
         load_static(buffer);
         res.set_content(buffer, "text/html");
     });
@@ -114,6 +119,10 @@ json CNNStateController::get_state() {
     load_layer_state(prev_layer_neurons, cnn.num_outputs, cnn.output_layer,
                      layer);
     state["layers"].push_back(layer);
+    state["outputs"] = json::array();
+    for (int i = 0; i < cnn.num_outputs; i++) {
+        state["outputs"].push_back(cnn.output_layer[i]->value);
+    }
     return state;
 }
 
