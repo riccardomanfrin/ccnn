@@ -8,7 +8,7 @@ OPTS=-g -ggdb
 cnn: $(OBJ)
 	g++ -I datagen/ $(OPTS) $^ -o cnn
 
-%.o: %.cpp
+%.o: %.cpp %.h
 	g++ $(OPTS) -I datagen/ -c $< -o $@
 
 clean:
