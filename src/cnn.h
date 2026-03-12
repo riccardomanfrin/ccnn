@@ -21,10 +21,6 @@
 #define ZERO 0
 #define ONE (MAX_NEURON_VAL / 8)
 
-// Normalize to the quantized admitted bounds within each individual step layer
-// You want the CNN layers values to NOT exceed the quantized space (e.g. 8bits)
-#define LAYERS_QUANTIZED_NORMALIZATION
-
 // Use integers/floats for the weights and biases
 // #define USE_FLOATS
 
