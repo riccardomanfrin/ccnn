@@ -16,7 +16,7 @@ int load_data(CNN& cnn) {
 }
 
 int main(int argc, char* argv[]) {
-    int hidden_layers_nodes_list[] = {10};
+    int hidden_layers_nodes_list[] = {2};
     CNN cnn(2, 1, hidden_layers_nodes_list, 1);
     cnn.init();
     load_data(cnn);
