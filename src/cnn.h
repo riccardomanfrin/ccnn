@@ -12,7 +12,7 @@
 #define QUANTIZED_VALUES (((long int)1) << QUANTIZED_BITS)
 #define MAX_NEURON_VAL ((((long int)1) << (QUANTIZED_BITS - 1)) - 1)
 #define MIN_NEURON_VAL (-(((long int)1) << (QUANTIZED_BITS - 1)))
-#define RELU_LEAK_FACTOR_PERCENT 25
+#define RELU_LEAK_FACTOR_PERCENT 4
 #define LEARNING_RATE_PER_1000 1
 #define WEIGHT_BIAS_SCALE_DOWN_FACTOR 2
 // Makes the CNN training reproducible
