@@ -489,11 +489,11 @@ int CNN::rand_weight_or_bias() {
 }
 
 value_t CNN::relu(value_t x) {
-    if (x < 0) return x / RELU_LEAK_FACTOR_PERCENT;
+    if (x < 0) return x * RELU_LEAK_FACTOR_PERCENT / 100;
     return x;
 }
 
 value_t CNN::drelu_reciprocal(value_t x) {
-    if (x < 0) return RELU_LEAK_FACTOR_PERCENT;
+    if (x < 0) return 100 / RELU_LEAK_FACTOR_PERCENT;
     return 1;
 }
