@@ -336,21 +336,41 @@ static void acc(value_t& base, value_t val) {
     if (base < val) base = val;
 }
 
+static value_t floor_log2(value_t n) {
+    // Start with log value 0
+    value_t log_value = 0;
+    
+    // Shift the number right until it becomes 1 (or 0 if the original n was 0
+    // or 1)
+    while (n > 1) {
+        n >>= 1;  // Equivalent to n = n / 2
+        log_value++;
+    }
+
+    return log_value;
+}
+
+static void apply_gradient(value_t& weight_or_bias, value_t gradient) {
+    if (gradient > 5)
+        weight_or_bias += floor_log2(gradient);
+    else if (gradient < -5)
+        weight_or_bias -= floor_log2(-gradient);
+    else
+        weight_or_bias += gradient;
+}
+
 int CNN::apply_and_clear_gradients(int layer_neurons, Neuron** layer,
                                    int prev_layer_neurons, Neuron** prev_layer,
                                    void* arg) {
     int batches_size = *(int*)arg;
 
     for (int k = 0; k < layer_neurons; k++) {
-        layer[k]->bias += layer[k]->bias_gradient * LEARNING_RATE_PER_1000 /
-                          1000 / batches_size;
+        apply_gradient(layer[k]->bias, layer[k]->bias_gradient);
 
         layer[k]->bias_gradient = 0;
 
         for (int j = 0; j < prev_layer_neurons; j++) {
-            layer[k]->weights[j] += layer[k]->weight_gradient[j] *
-                                    LEARNING_RATE_PER_1000 / 1000 /
-                                    batches_size;
+            apply_gradient(layer[k]->weights[j], layer[k]->weight_gradient[j]);
             layer[k]->weight_gradient[j] = 0;
         }
     }
