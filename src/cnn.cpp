@@ -422,11 +422,12 @@ int CNN::calc_layer(int prev_layer_neurons, Neuron** prev_layer,
          * MAX_NEURON_VAL, to keep contributions ~ MAX_NEURON_VAL you want to
          * divide val * weight which are proportional to ~ MAX_NEURON_VAL^2, so
          * we divide by MAX_NEURON_VAL, to bring it back to MAX_NEURON_VAL
-         * 2. prev_layer_neurons: this scales against the number of contributors
-         * to the neuron value (that is, the number of previous layer nodes)
+         * 2. we don't divide by prev_layer_neurons because with multi layers 
+         * the attenuation would be too small and therefore require huge weights
+         * to compensate. Better to leave the value grow a bit
          */
         curr->value =
-            curr->value / MAX_NEURON_VAL / prev_layer_neurons + curr->bias;
+            curr->value / MAX_NEURON_VAL + curr->bias;
     }
 
     for (int n = 0; n < layer_neurons; n++) {
