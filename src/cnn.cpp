@@ -373,18 +373,19 @@ int CNN::back_propagate_errors(int scaling_factor, int layer_neurons,
         }
     }
 
-    value_t max_error = 0;
+    //value_t max_error = 0;
     for (int j = 0; j < prev_layer_neurons; j++) {
         prev_layer[j]->error = prev_layer_neurons_delta_error[j] /
                                drelu_reciprocal(prev_layer[j]->value);
-        acc(max_error, prev_layer[j]->error);
+        //acc(max_error, prev_layer[j]->error);
     }
+    /*
     if (max_error > MAX_NEURON_VAL) {
         for (int j = 0; j < prev_layer_neurons; j++) {
             prev_layer[j]->error =
                 prev_layer[j]->error * MAX_NEURON_VAL / max_error;
         }
-    }
+    }*/
 
     return 0;
 }
