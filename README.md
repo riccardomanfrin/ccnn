@@ -38,6 +38,57 @@ Compared to it I've added few additional features:
 11. My minimal setup is to learn the XOR function. The minimal network for this is 2 inputs, 1layer with 2 nodes and 1 output. The structural "rigidity" of this configuration, coupled with the used of quantized values (not using floats) makes convergence occur ~50% of the times. Otherwise we reach a symmetrical non convergence point from which we cannot escape. Adding nodes to the hidden layer allows for >> 50% convergence.
 11. Still learning and MAYBE some of the above quotes might prove wrong!
 
+## LEAKY FACTOR
+
+Why 25% leak converges faster
+
+Because you're using integer division, the expression:
+
+(error) / (100/p)
+
+can easily collapse to zero when p is small
+
+Example with 4%:
+
+p = 4
+reciprocal = 25
+
+If the output error is:
+
+expected - value = 10
+
+then:
+
+10 / 25 = 0
+
+So the gradient disappears.
+
+With 25% leak
+p = 25
+reciprocal = 4
+
+Now:
+
+10 / 4 = 2
+
+Gradient survives.
+
+So the difference is not just amplification, it's quantization survival.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # ToDo
 
