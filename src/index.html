@@ -1103,7 +1103,8 @@ async function runTrain(){
 //  RUN (INFERENCE)  — POST /run
 //
 //  Request body:  { inputs: [v0, v1, ...] }   ← plain numbers from input nodes
-//  Response body: { outputs: [v0, v1, ...] }   ← plain numbers, one per output node
+//  Response body: same compact schema as /train
+//  { inputs:[...], overall_mean_out_error, layers:[{value,bias,weights},...] }
 // ═══════════════════════════════════════════════
 
 async function runInference(){
@@ -1130,23 +1131,19 @@ async function runInference(){
     if(!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
 
-    // data.outputs: array of numbers, one per output node
-    if(Array.isArray(data.outputs)){
-      const maxLayerIdx = Math.max(...nodes.map(n => n.layer));
-      const outputNodes = nodes
-        .filter(n => n.layer === maxLayerIdx)
-        .sort((a,b) => a.index - b.index);
-      data.outputs.forEach((v, i) => {
-        if(outputNodes[i]) outputNodes[i].value = v;
-      });
-    }
-
+    // Full compact schema — loads inputs, all hidden values/biases/weights, outputs
+    loadValuesData(data);
     draw();
     syncValuesTA();
 
-    const outStr = Array.isArray(data.outputs)
-      ? '[' + data.outputs.map(v => fmt(v)).join(', ') + ']'
-      : '—';
+    // Extract output values for status display
+    const maxLayerIdx = Math.max(...nodes.map(n => n.layer));
+    const outVals = nodes
+      .filter(n => n.layer === maxLayerIdx)
+      .sort((a,b) => a.index - b.index)
+      .map(n => fmt(n.value));
+    const outStr = '[' + outVals.join(', ') + ']';
+    const err = data.overall_mean_out_error ?? '—';
     setStatus('ok', `✓ Run → outputs: ${outStr}`);
     logEntry('RUN', outStr);
   } catch(e){
